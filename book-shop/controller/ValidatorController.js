@@ -43,7 +43,14 @@ const joinValidator = [
     validate,
 ];
 
+const getSearch = [
+    body("id")
+    .notEmpty()
+    .isInt()
+];
+
 module.exports = {
     loginValidator,
     joinValidator,
+    getSearch
 };

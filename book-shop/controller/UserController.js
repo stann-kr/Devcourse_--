@@ -1,4 +1,3 @@
-const express = require("express");
 const pool = require("../mariadb");
 const dotenv = require("dotenv");
 const jwt = require("jsonwebtoken");
@@ -21,20 +20,19 @@ async function getUserByEmail(email) {
 }
 
 const login = async (req, res) => {
-    const { email, password } = req.body;
-    const sql = SQL.SELECT_USER_BY_EMAIL;
-
+    
     try {
-        const results = await pool.query(sql, [email]);
-        const loginUser = results[0];
+        const { email, password } = req.body;
 
-        if (!loginUser) {
+        const user = await getUserByEmail(email);
+
+        if (!user) {
             return res.status(StatusCodes.FORBIDDEN).json({
                 message: "이메일 또는 비밀번호가 일치하지 않습니다.",
             });
         }
 
-        const match = await bcrypt.compare(password, loginUser.password);
+        const match = await bcrypt.compare(password, user.password);
         if (!match) {
             return res.status(StatusCodes.FORBIDDEN).json({
                 message: "이메일 또는 비밀번호가 일치하지 않습니다.",
@@ -42,7 +40,7 @@ const login = async (req, res) => {
         }
 
         const payload = {
-            email: loginUser.email,
+            email: user.email,
         };
 
         const token = jwt.sign(payload, process.env.PRIVATE_KEY, {
@@ -53,7 +51,7 @@ const login = async (req, res) => {
         res.cookie("token", token, { httpOnly: true });
 
         return res.status(StatusCodes.OK).json({
-            message: `${loginUser.user_name}님 로그인 되었습니다.`,
+            message: `${user.user_name}님 로그인 되었습니다.`,
         });
     } catch (err) {
         console.error(err);
@@ -64,13 +62,13 @@ const login = async (req, res) => {
 };
 
 const join = async (req, res) => {
-    const { email, password, user_name } = req.body;
-
+    
     try {
-        const checkEmailSql = SQL.SELECT_USER_BY_EMAIL;
-        const existing = await pool.query(checkEmailSql, [email]);
+        const { email, password, user_name } = req.body;
 
-        if (existing.length) {
+        const user = await getUserByEmail(email);
+
+        if (user) {
             return res
                 .status(StatusCodes.BAD_REQUEST)
                 .json({ message: "이미 가입된 이메일입니다." });
@@ -93,14 +91,13 @@ const join = async (req, res) => {
 };
 
 const passwordResetRequest = async (req, res) => {
-    const { email } = req.body;
-    const sql = SQL.SELECT_USER_BY_EMAIL;
-
+    
     try {
-        const results = await pool.query(sql, [email]);
-        const user = results[0];
+        const { email } = req.body;
 
-        console.log(user);
+        const user = await getUserByEmail(email);
+
+        // console.log(user);
 
         res.json({
             email: email,
