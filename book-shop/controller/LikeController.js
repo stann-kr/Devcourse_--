@@ -23,7 +23,7 @@ const likeDelete = async (req, res) => {
 
     try {
         await pool.query(
-            "DELETE FROM likes WHERE user_id = ? AND book_id = ?",
+            "DELETE FROM likes WHERE  user_id = ? AND book_id = ?",
             [user_id, book_id]
         );
         return res.status(StatusCodes.OK).json({ message: "좋아요 삭제" });

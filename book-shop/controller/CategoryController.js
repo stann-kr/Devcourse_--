@@ -3,7 +3,7 @@ const { StatusCodes } = require("http-status-codes");
 
 const SQL = {
     SELECT_CATEGORY_BOOKS: "SELECT * FROM categories",
-}
+};
 
 const categoryAll = async (req, res) => {
     try {

@@ -47,3 +47,6 @@ SELECT books.id AS book_id, books.title, books.category_id, books.img, books.aut
 
 
 SELECT books.*, categories.id AS category_id, categories.category_name FROM books LEFT JOIN categories ON books.category_id = categories.id WHERE books.id = ?;
+
+-- 장바구니 담기
+INSERT INTO cart_items (book_id, quantity, user_id) VALUES (1, 1, 1);

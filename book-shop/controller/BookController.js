@@ -1,25 +1,54 @@
-const { parse } = require("dotenv");
 const pool = require("../mariadb");
 const { StatusCodes } = require("http-status-codes");
 
+// SQL 쿼리 정리 및 주석 추가
 const SQL = {
-    SELECT_ALL_FROM: "SELECT * FROM books",
-    SELECT_ALL_BOOKS_LIMIT: "LIMIT 10",
-    SELECT_BOOK: "WHERE id = ?",
-    SELECT_BOOK_ID_CATEGORY: "SELECT books.*, categories.id AS category_id, categories.category_name FROM books LEFT JOIN categories ON books.category_id = categories.id WHERE books.id = ?;",
-    SELECT_BOOK_ID_CATEGORY_NEW: "SELECT * FROM books WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW() AND category = ?;",
-    SELECT_BOOK_ID_NEW: "SELECT * FROM books WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW();",
-    SELECT_BOOKS_WITH_CATEGORY_JOIN: `
-        SELECT books.*, categories.category_name
+    // 전체 도서 조회
+    SELECT_ALL_FROM: `
+        SELECT * FROM books
+    `,
+    // 도서 10개 제한 조회
+    SELECT_ALL_BOOKS_LIMIT: `
+        SELECT * FROM books LIMIT 10
+    `,
+    // 특정 도서 조회 (id)
+    SELECT_BOOK: `
+        SELECT * FROM books WHERE books_id = ?
+    `,
+    // 도서 상세 + 카테고리명 + 좋아요 개수
+    SELECT_BOOK_ID_CATEGORY: `
+        SELECT books.*,
+            categories.categories_id AS category_id,
+            categories.category_name,
+            (SELECT COUNT(*) FROM likes WHERE likes.book_id = books.books_id) AS likes
         FROM books
-        LEFT JOIN categories ON books.category_id = categories.id
+        LEFT JOIN categories ON books.category_id = categories.categories_id
+        WHERE books.books_id = ?
+    `,
+    // 최근 1개월 내 카테고리별 신간
+    SELECT_BOOK_ID_CATEGORY_NEW: `
+        SELECT * FROM books
+        WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()
+        AND category_id = ?
+    `,
+    // 최근 1개월 내 신간
+    SELECT_BOOK_ID_NEW: `
+        SELECT * FROM books
+        WHERE pub_date BETWEEN DATE_SUB(NOW(), INTERVAL 1 MONTH) AND NOW()
+    `,
+    // 전체 도서 + 카테고리명 + 좋아요 개수
+    SELECT_BOOKS_WITH_CATEGORY_JOIN: `
+        SELECT books.*,
+            categories.category_name,
+            (SELECT COUNT(*) FROM likes WHERE likes.book_id = books.books_id) AS likes
+        FROM books
+        LEFT JOIN categories ON books.category_id = categories.categories_id
     `,
 };
 
 const bookAll = async (req, res) => {
     // LIMIT 최대 값
     const MAX_LIMIT = 50;
-    
     let { category_id, news, limit, currentPage } = req.query;
 
     // limit 보정
@@ -61,13 +90,20 @@ const bookAll = async (req, res) => {
                 .json({ message: "해당 조건에 맞는 도서가 없습니다." });
         }
 
+        //COUNT(*) 결과가 JavaScript의 BigInt로 반환되어, JSON.stringify가 이를 직렬화하지 못해 발생
+        // BigInt를 Number로 변환하여 JSON.stringify가 직렬화할 수 있도록 처리
+        const booksSerialized = books.map(book => {
+            const obj = { ...book };
+            Object.keys(obj).forEach(key => {
+                if (typeof obj[key] === 'bigint') {
+                    obj[key] = Number(obj[key]);
+                }
+            });
+            return obj;
+        });
+
         return res.status(StatusCodes.OK).json({
-            data: books,
-            // meta: {
-            //     currentPage,
-            //     limit,
-            //     count: books.length,
-            // },
+            data: booksSerialized,
         });
     } catch (err) {
         console.error(err);
@@ -94,8 +130,6 @@ const bookDetail = async (req, res) => {
             .json({ message: "서버 오류" });
     }
 };
-
-
 
 module.exports = {
     bookAll,
