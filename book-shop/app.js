@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
+app.use(express.json());
 app.listen(process.env.PORT);
 
 const userRouter = require("./routes/users");
